@@ -1,4 +1,6 @@
-hw/PynqZ2/audio_lab/
+hw/Pynq-Z2/audio_lab/
+hw/Pynq-Z2/NA
+hw/Pynq-Z2/bitstreams
 .Xil
 vivado.jou
 vivado.log

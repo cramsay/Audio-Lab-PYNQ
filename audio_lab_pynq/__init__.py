@@ -21,4 +21,5 @@ def install_notebooks(notebook_dir=None):
     if os.path.exists(dst_nb_dir):
         shutil.rmtree(dst_nb_dir)
     copy_tree(src_nb_dir, dst_nb_dir)
+    os.mkdir(dst_bs_dir)
     copy_tree(src_bs_dir, dst_bs_dir)

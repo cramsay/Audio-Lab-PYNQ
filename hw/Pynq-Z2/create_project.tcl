@@ -9,6 +9,9 @@ set_property  ip_repo_paths $iprepo_dir [current_project]
 set_property target_language VHDL [current_project]
 update_ip_catalog
 
+# Add constraints file
+add_files -fileset constrs_1 -norecurse $origin_dir/audio_lab.xdc
+
 # Generate block design
 source ./block_design.tcl
 make_wrapper -files [get_files ./${proj_name}/${proj_name}.srcs/sources_1/bd/block_design/block_design.bd] -top
