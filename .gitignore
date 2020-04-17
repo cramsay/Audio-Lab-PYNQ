@@ -1,0 +1,9 @@
+hw/PynqZ2/audio_lab/
+.Xil
+vivado.jou
+vivado.log
+
+*.log
+*.htm
+
+.ipynb_checkpoints
