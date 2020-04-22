@@ -120,8 +120,8 @@ createDomain vXilinxSystem{vName = "AudioDomain", vResetKind = Asynchronous, vRe
 unpackChan :: BitVector 48 -> (SFixed 1 23, SFixed 1 23)
 unpackChan bv = (left, right)
   where
-  left  = unpack $ v2bv (chans !! 0)
-  right = unpack $ v2bv (chans !! 1)
+  left  = unpack $ v2bv (chans !! 1)
+  right = unpack $ v2bv (chans !! 0)
   chans = unconcat d24 $ bv2v bv
 
 packChan :: SFixed 1 23 -> SFixed 1 23 -> BitVector 48
