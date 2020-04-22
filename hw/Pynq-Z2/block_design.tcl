@@ -1,6 +1,6 @@
 
 ################################################################
-# This is a generated script based on design: design_pl
+# This is a generated script based on design: block_design
 #
 # Though there are limitations about the generated script,
 # the main purpose of this utility is to make learning
@@ -35,7 +35,7 @@ if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
 ################################################################
 
 # To test this script, run the following commands from Vivado Tcl console:
-# source design_pl_script.tcl
+# source block_design_script.tcl
 
 # If there is no project opened, this script will create a
 # project, but make sure you do not have an existing project
@@ -125,9 +125,10 @@ set bCheckIPs 1
 if { $bCheckIPs == 1 } {
    set list_check_ips "\ 
 user.org:user:audio_top:1.0\
+xilinx.com:ip:proc_sys_reset:5.0\
 xilinx.com:ip:processing_system7:5.5\
 xilinx.com:ip:xlconstant:1.1\
-xilinx.com:ip:c_shift_ram:12.0\
+user.org:user:clash_dsp:1.0\
 "
 
    set list_ips_missing ""
@@ -194,55 +195,27 @@ proc create_hier_cell_dsp { parentCell nameHier } {
   # Create interface pins
 
   # Create pins
+  create_bd_pin -dir I -type rst aresetn
+  create_bd_pin -dir I -type clk clk
   create_bd_pin -dir I -from 23 -to 0 -type data in_l
   create_bd_pin -dir I -from 23 -to 0 -type data in_r
   create_bd_pin -dir I -type ce in_valid
-  create_bd_pin -dir I -type clk mclk
   create_bd_pin -dir O -from 23 -to 0 -type data out_l
   create_bd_pin -dir O -from 23 -to 0 -type data out_r
   create_bd_pin -dir O -from 0 -to 0 -type data out_valid
 
-  # Create instance: c_shift_ram_0, and set properties
-  set c_shift_ram_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:c_shift_ram:12.0 c_shift_ram_0 ]
-  set_property -dict [ list \
-   CONFIG.AsyncInitVal {000000000000000000000000} \
-   CONFIG.CE {true} \
-   CONFIG.DefaultData {000000000000000000000000} \
-   CONFIG.Depth {1} \
-   CONFIG.SyncInitVal {000000000000000000000000} \
-   CONFIG.Width {24} \
- ] $c_shift_ram_0
-
-  # Create instance: c_shift_ram_1, and set properties
-  set c_shift_ram_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:c_shift_ram:12.0 c_shift_ram_1 ]
-  set_property -dict [ list \
-   CONFIG.AsyncInitVal {000000000000000000000000} \
-   CONFIG.CE {true} \
-   CONFIG.DefaultData {000000000000000000000000} \
-   CONFIG.Depth {1} \
-   CONFIG.SyncInitVal {000000000000000000000000} \
-   CONFIG.Width {24} \
- ] $c_shift_ram_1
-
-  # Create instance: c_shift_ram_2, and set properties
-  set c_shift_ram_2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:c_shift_ram:12.0 c_shift_ram_2 ]
-  set_property -dict [ list \
-   CONFIG.AsyncInitVal {0} \
-   CONFIG.CE {false} \
-   CONFIG.DefaultData {0} \
-   CONFIG.Depth {1} \
-   CONFIG.SyncInitVal {0} \
-   CONFIG.Width {1} \
- ] $c_shift_ram_2
+  # Create instance: clash_dsp_0, and set properties
+  set clash_dsp_0 [ create_bd_cell -type ip -vlnv user.org:user:clash_dsp:1.0 clash_dsp_0 ]
 
   # Create port connections
-  connect_bd_net -net audio_top_0_line_in_l [get_bd_pins in_l] [get_bd_pins c_shift_ram_0/D]
-  connect_bd_net -net audio_top_0_line_in_r [get_bd_pins in_r] [get_bd_pins c_shift_ram_1/D]
-  connect_bd_net -net audio_top_0_new_sample [get_bd_pins in_valid] [get_bd_pins c_shift_ram_0/CE] [get_bd_pins c_shift_ram_1/CE] [get_bd_pins c_shift_ram_2/D]
-  connect_bd_net -net c_shift_ram_0_Q [get_bd_pins out_l] [get_bd_pins c_shift_ram_0/Q]
-  connect_bd_net -net c_shift_ram_1_Q [get_bd_pins out_r] [get_bd_pins c_shift_ram_1/Q]
-  connect_bd_net -net c_shift_ram_2_Q [get_bd_pins out_valid] [get_bd_pins c_shift_ram_2/Q]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins mclk] [get_bd_pins c_shift_ram_0/CLK] [get_bd_pins c_shift_ram_1/CLK] [get_bd_pins c_shift_ram_2/CLK]
+  connect_bd_net -net aresetn_1 [get_bd_pins aresetn] [get_bd_pins clash_dsp_0/aresetn]
+  connect_bd_net -net clash_dsp_0_out_left [get_bd_pins out_l] [get_bd_pins clash_dsp_0/out_left]
+  connect_bd_net -net clash_dsp_0_out_right [get_bd_pins out_r] [get_bd_pins clash_dsp_0/out_right]
+  connect_bd_net -net clash_dsp_0_out_valid [get_bd_pins out_valid] [get_bd_pins clash_dsp_0/out_valid]
+  connect_bd_net -net in_l_1 [get_bd_pins in_l] [get_bd_pins clash_dsp_0/in_left]
+  connect_bd_net -net in_r_1 [get_bd_pins in_r] [get_bd_pins clash_dsp_0/in_right]
+  connect_bd_net -net in_valid_1 [get_bd_pins in_valid] [get_bd_pins clash_dsp_0/in_valid]
+  connect_bd_net -net mclk_1 [get_bd_pins clk] [get_bd_pins clash_dsp_0/clk]
 
   # Restore current instance
   current_bd_instance $oldCurInst
@@ -302,6 +275,9 @@ proc create_root_design { parentCell } {
 
   # Create instance: dsp
   create_hier_cell_dsp [current_bd_instance .] dsp
+
+  # Create instance: proc_sys_reset_0, and set properties
+  set proc_sys_reset_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_0 ]
 
   # Create instance: processing_system7_0, and set properties
   set processing_system7_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 processing_system7_0 ]
@@ -1128,7 +1104,8 @@ proc create_root_design { parentCell } {
   connect_bd_net -net c_shift_ram_0_Q [get_bd_pins audio_top_0/hphone_l] [get_bd_pins dsp/out_l]
   connect_bd_net -net c_shift_ram_1_Q [get_bd_pins audio_top_0/hphone_r] [get_bd_pins dsp/out_r]
   connect_bd_net -net c_shift_ram_2_Q [get_bd_pins audio_top_0/hphone_l_valid] [get_bd_pins audio_top_0/hphone_r_valid_dummy] [get_bd_pins dsp/out_valid]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins audio_top_0/clk_100] [get_bd_pins dsp/mclk] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK]
+  connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins dsp/aresetn] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins audio_top_0/clk_100] [get_bd_pins dsp/clk] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK]
   connect_bd_net -net sdata_i_1 [get_bd_ports sdata_i] [get_bd_pins audio_top_0/AC_GPIO1]
   connect_bd_net -net xlconstant_0_dout [get_bd_ports codec_address] [get_bd_pins xlconstant_0/dout]
 
@@ -1138,6 +1115,7 @@ proc create_root_design { parentCell } {
   # Restore current instance
   current_bd_instance $oldCurInst
 
+  validate_bd_design
   save_bd_design
 }
 # End of create_root_design()
@@ -1149,6 +1127,4 @@ proc create_root_design { parentCell } {
 
 create_root_design ""
 
-
-common::send_msg_id "BD_TCL-1000" "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
 

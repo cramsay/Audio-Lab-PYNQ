@@ -1,0 +1,4 @@
+src/*.hi
+src/*.o
+tmp_vivado
+vhdl
