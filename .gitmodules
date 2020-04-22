@@ -1,3 +1,0 @@
-[submodule "hw/ip/adau1761/zedboard_audio"]
-	path = hw/ip/adau1761/zedboard_audio
-	url = https://github.com/ems-kl/zedboard_audio.git

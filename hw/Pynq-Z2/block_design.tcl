@@ -125,10 +125,10 @@ set bCheckIPs 1
 if { $bCheckIPs == 1 } {
    set list_check_ips "\ 
 user.org:user:audio_top:1.0\
-xilinx.com:ip:proc_sys_reset:5.0\
-xilinx.com:ip:processing_system7:5.5\
-xilinx.com:ip:xlconstant:1.1\
 user.org:user:clash_dsp:1.0\
+xilinx.com:ip:processing_system7:5.5\
+xilinx.com:ip:proc_sys_reset:5.0\
+xilinx.com:ip:xlconstant:1.1\
 "
 
    set list_ips_missing ""
@@ -157,69 +157,6 @@ if { $bCheckIPsPassed != 1 } {
 # DESIGN PROCs
 ##################################################################
 
-
-# Hierarchical cell: dsp
-proc create_hier_cell_dsp { parentCell nameHier } {
-
-  variable script_folder
-
-  if { $parentCell eq "" || $nameHier eq "" } {
-     catch {common::send_msg_id "BD_TCL-102" "ERROR" "create_hier_cell_dsp() - Empty argument(s)!"}
-     return
-  }
-
-  # Get object for parentCell
-  set parentObj [get_bd_cells $parentCell]
-  if { $parentObj == "" } {
-     catch {common::send_msg_id "BD_TCL-100" "ERROR" "Unable to find parent cell <$parentCell>!"}
-     return
-  }
-
-  # Make sure parentObj is hier blk
-  set parentType [get_property TYPE $parentObj]
-  if { $parentType ne "hier" } {
-     catch {common::send_msg_id "BD_TCL-101" "ERROR" "Parent <$parentObj> has TYPE = <$parentType>. Expected to be <hier>."}
-     return
-  }
-
-  # Save current instance; Restore later
-  set oldCurInst [current_bd_instance .]
-
-  # Set parent object as current
-  current_bd_instance $parentObj
-
-  # Create cell and set as current instance
-  set hier_obj [create_bd_cell -type hier $nameHier]
-  current_bd_instance $hier_obj
-
-  # Create interface pins
-
-  # Create pins
-  create_bd_pin -dir I -type rst aresetn
-  create_bd_pin -dir I -type clk clk
-  create_bd_pin -dir I -from 23 -to 0 -type data in_l
-  create_bd_pin -dir I -from 23 -to 0 -type data in_r
-  create_bd_pin -dir I -type ce in_valid
-  create_bd_pin -dir O -from 23 -to 0 -type data out_l
-  create_bd_pin -dir O -from 23 -to 0 -type data out_r
-  create_bd_pin -dir O -from 0 -to 0 -type data out_valid
-
-  # Create instance: clash_dsp_0, and set properties
-  set clash_dsp_0 [ create_bd_cell -type ip -vlnv user.org:user:clash_dsp:1.0 clash_dsp_0 ]
-
-  # Create port connections
-  connect_bd_net -net aresetn_1 [get_bd_pins aresetn] [get_bd_pins clash_dsp_0/aresetn]
-  connect_bd_net -net clash_dsp_0_out_left [get_bd_pins out_l] [get_bd_pins clash_dsp_0/out_left]
-  connect_bd_net -net clash_dsp_0_out_right [get_bd_pins out_r] [get_bd_pins clash_dsp_0/out_right]
-  connect_bd_net -net clash_dsp_0_out_valid [get_bd_pins out_valid] [get_bd_pins clash_dsp_0/out_valid]
-  connect_bd_net -net in_l_1 [get_bd_pins in_l] [get_bd_pins clash_dsp_0/in_left]
-  connect_bd_net -net in_r_1 [get_bd_pins in_r] [get_bd_pins clash_dsp_0/in_right]
-  connect_bd_net -net in_valid_1 [get_bd_pins in_valid] [get_bd_pins clash_dsp_0/in_valid]
-  connect_bd_net -net mclk_1 [get_bd_pins clk] [get_bd_pins clash_dsp_0/clk]
-
-  # Restore current instance
-  current_bd_instance $oldCurInst
-}
 
 
 # Procedure to create entire design; Provide argument to make
@@ -273,11 +210,8 @@ proc create_root_design { parentCell } {
   # Create instance: audio_top_0, and set properties
   set audio_top_0 [ create_bd_cell -type ip -vlnv user.org:user:audio_top:1.0 audio_top_0 ]
 
-  # Create instance: dsp
-  create_hier_cell_dsp [current_bd_instance .] dsp
-
-  # Create instance: proc_sys_reset_0, and set properties
-  set proc_sys_reset_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_0 ]
+  # Create instance: clash_dsp_0, and set properties
+  set clash_dsp_0 [ create_bd_cell -type ip -vlnv user.org:user:clash_dsp:1.0 clash_dsp_0 ]
 
   # Create instance: processing_system7_0, and set properties
   set processing_system7_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 processing_system7_0 ]
@@ -1081,6 +1015,9 @@ proc create_root_design { parentCell } {
    CONFIG.PCW_WDT_PERIPHERAL_FREQMHZ {133.333333} \
  ] $processing_system7_0
 
+  # Create instance: rst_ps7_0_100M, and set properties
+  set rst_ps7_0_100M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_ps7_0_100M ]
+
   # Create instance: xlconstant_0, and set properties
   set xlconstant_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 xlconstant_0 ]
   set_property -dict [ list \
@@ -1089,6 +1026,8 @@ proc create_root_design { parentCell } {
  ] $xlconstant_0
 
   # Create interface connections
+  connect_bd_intf_net -intf_net audio_top_0_AXIS_line_in [get_bd_intf_pins audio_top_0/AXIS_line_in] [get_bd_intf_pins clash_dsp_0/axis_in]
+  connect_bd_intf_net -intf_net clash_dsp_0_axis_out [get_bd_intf_pins audio_top_0/AXIS_hphone] [get_bd_intf_pins clash_dsp_0/axis_out]
   connect_bd_intf_net -intf_net processing_system7_0_DDR [get_bd_intf_ports DDR] [get_bd_intf_pins processing_system7_0/DDR]
   connect_bd_intf_net -intf_net processing_system7_0_FIXED_IO [get_bd_intf_ports FIXED_IO] [get_bd_intf_pins processing_system7_0/FIXED_IO]
   connect_bd_intf_net -intf_net processing_system7_0_IIC_1 [get_bd_intf_ports IIC_1] [get_bd_intf_pins processing_system7_0/IIC_1]
@@ -1098,14 +1037,9 @@ proc create_root_design { parentCell } {
   connect_bd_net -net AC_GPIO3_0_1 [get_bd_ports lrclk] [get_bd_pins audio_top_0/AC_GPIO3]
   connect_bd_net -net audio_top_0_AC_GPIO0 [get_bd_ports sdata_o] [get_bd_pins audio_top_0/AC_GPIO0]
   connect_bd_net -net audio_top_0_AC_MCLK [get_bd_ports mclk] [get_bd_pins audio_top_0/AC_MCLK]
-  connect_bd_net -net audio_top_0_line_in_l [get_bd_pins audio_top_0/line_in_l] [get_bd_pins dsp/in_l]
-  connect_bd_net -net audio_top_0_line_in_r [get_bd_pins audio_top_0/line_in_r] [get_bd_pins dsp/in_r]
-  connect_bd_net -net audio_top_0_new_sample [get_bd_pins audio_top_0/new_sample] [get_bd_pins dsp/in_valid]
-  connect_bd_net -net c_shift_ram_0_Q [get_bd_pins audio_top_0/hphone_l] [get_bd_pins dsp/out_l]
-  connect_bd_net -net c_shift_ram_1_Q [get_bd_pins audio_top_0/hphone_r] [get_bd_pins dsp/out_r]
-  connect_bd_net -net c_shift_ram_2_Q [get_bd_pins audio_top_0/hphone_l_valid] [get_bd_pins audio_top_0/hphone_r_valid_dummy] [get_bd_pins dsp/out_valid]
-  connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins dsp/aresetn] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins audio_top_0/clk_100] [get_bd_pins dsp/clk] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins audio_top_0/clk_100] [get_bd_pins clash_dsp_0/clk] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins rst_ps7_0_100M/slowest_sync_clk]
+  connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins processing_system7_0/FCLK_RESET0_N] [get_bd_pins rst_ps7_0_100M/ext_reset_in]
+  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins clash_dsp_0/aresetn] [get_bd_pins rst_ps7_0_100M/peripheral_aresetn]
   connect_bd_net -net sdata_i_1 [get_bd_ports sdata_i] [get_bd_pins audio_top_0/AC_GPIO1]
   connect_bd_net -net xlconstant_0_dout [get_bd_ports codec_address] [get_bd_pins xlconstant_0/dout]
 

@@ -1,4 +1,10 @@
-all:
-	git submodule init
+ip := ./hdl/component.xml
+
+all: $(ip)
+
+$(ip):
+	vivado -mode batch -notrace -nojournal -nolog -source create_ip.tcl
+
 clean:
-	echo "Nothing to clean here..."
+	rm -rf tmp_vivado *.jou *.log NA hdl/xgui hdl/component.xml
+

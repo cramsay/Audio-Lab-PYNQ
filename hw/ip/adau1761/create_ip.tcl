@@ -1,13 +1,13 @@
 # Config
 set prj_name     "tmp_vivado"
 set ip_prj_name  "tmp_vivado_ip"
-set src_dir      "./vhdl"
+set src_dir      "./hdl"
 
-set clk_pin      "clk"
-set axis_in_bus  "AIXS_in"
-set axis_out_bus "AIXS_out"
+set clk_pin      "clk_100"
+set axis_in_bus  "AXIS_hphone"
+set axis_out_bus "AXIS_line_in"
 
-set ip_version   1
+set ip_version   2
 
 # Create dummy project
 create_project ${prj_name} ./${prj_name} -part xc7z020clg400-1

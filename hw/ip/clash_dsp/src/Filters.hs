@@ -117,29 +117,37 @@ lowPass700 = firTranspose coeffs
 
 createDomain vXilinxSystem{vName = "AudioDomain", vResetKind = Asynchronous, vResetPolarity = ActiveLow}
 
+unpackChan :: BitVector 48 -> (SFixed 1 23, SFixed 1 23)
+unpackChan bv = (left, right)
+  where
+  left  = unpack $ v2bv (chans !! 0)
+  right = unpack $ v2bv (chans !! 1)
+  chans = unconcat d24 $ bv2v bv
+
+packChan :: SFixed 1 23 -> SFixed 1 23 -> BitVector 48
+packChan left right = pack right ++# pack left
+
 topEntity
   :: Clock AudioDomain
   -> Reset AudioDomain
   -> Enable AudioDomain
-  -> Signal AudioDomain (SFixed 1 23)
-  -> Signal AudioDomain (SFixed 1 23)
-  -> (Signal AudioDomain (SFixed 1 23)
-     ,Signal AudioDomain (SFixed 1 23)
+  -> Signal AudioDomain (BitVector 48)
+  -> (Signal AudioDomain (BitVector 48)
      ,Signal AudioDomain Bool)
-topEntity c r e left right = (filter left, filter right, fromEnable e)
+topEntity c r e samples = (samples_out, fromEnable e)
   where filter = withClockResetEnable c r e lowPass700
+        (left, right) = unbundle $ unpackChan <$> samples
+        samples_out = packChan <$> filter left <*> filter right
 
 {-# ANN topEntity
   (Synthesize
     { t_name   = "clash_dsp"
     , t_inputs = [ PortName "clk"
                  , PortName "aresetn"
-                 , PortName "in_valid"
-                 , PortName "in_left"
-                 , PortName "in_right"
+                 , PortName "axis_in_tvalid"
+                 , PortName "axis_in_tdata"
                  ]
-    , t_output = PortProduct "" [PortName "out_left"
-                                ,PortName "out_right"
-                                ,PortName "out_valid"
+    , t_output = PortProduct "" [PortName "axis_out_tdata"
+                                ,PortName "axis_out_tvalid"
                                 ]
     }) #-}
