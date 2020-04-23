@@ -251,6 +251,10 @@ proc create_root_design { parentCell } {
   set axis_switch_sink [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_switch:1.1 axis_switch_sink ]
   set_property -dict [ list \
    CONFIG.DECODER_REG {1} \
+   CONFIG.HAS_TKEEP {0} \
+   CONFIG.HAS_TLAST {0} \
+   CONFIG.HAS_TREADY {0} \
+   CONFIG.HAS_TSTRB {0} \
    CONFIG.NUM_MI {2} \
    CONFIG.OUTPUT_REG {1} \
    CONFIG.ROUTING_MODE {1} \
@@ -260,9 +264,14 @@ proc create_root_design { parentCell } {
   set axis_switch_source [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_switch:1.1 axis_switch_source ]
   set_property -dict [ list \
    CONFIG.DECODER_REG {1} \
+   CONFIG.HAS_TKEEP {0} \
+   CONFIG.HAS_TLAST {0} \
+   CONFIG.HAS_TREADY {0} \
+   CONFIG.HAS_TSTRB {0} \
    CONFIG.NUM_MI {2} \
    CONFIG.OUTPUT_REG {1} \
    CONFIG.ROUTING_MODE {1} \
+   CONFIG.TDATA_NUM_BYTES {6} \
  ] $axis_switch_source
 
   # Create instance: clash_dsp_0, and set properties
@@ -1145,6 +1154,7 @@ proc create_root_design { parentCell } {
   # Restore current instance
   current_bd_instance $oldCurInst
 
+  validate_bd_design
   save_bd_design
 }
 # End of create_root_design()
@@ -1156,6 +1166,4 @@ proc create_root_design { parentCell } {
 
 create_root_design ""
 
-
-common::send_msg_id "BD_TCL-1000" "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
 
