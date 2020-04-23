@@ -128,11 +128,11 @@ user.org:user:audio_top:1.0\
 xilinx.com:ip:axi_dma:7.1\
 xilinx.com:ip:smartconnect:1.0\
 xilinx.com:ip:axis_subset_converter:1.1\
+xilinx.com:ip:axis_switch:1.1\
+user.org:user:clash_dsp:1.0\
 xilinx.com:ip:processing_system7:5.5\
 xilinx.com:ip:proc_sys_reset:5.0\
 xilinx.com:ip:xlconstant:1.1\
-xilinx.com:ip:axis_switch:1.1\
-user.org:user:clash_dsp:1.0\
 "
 
    set list_ips_missing ""
@@ -161,98 +161,6 @@ if { $bCheckIPsPassed != 1 } {
 # DESIGN PROCs
 ##################################################################
 
-
-# Hierarchical cell: dsp
-proc create_hier_cell_dsp { parentCell nameHier } {
-
-  variable script_folder
-
-  if { $parentCell eq "" || $nameHier eq "" } {
-     catch {common::send_msg_id "BD_TCL-102" "ERROR" "create_hier_cell_dsp() - Empty argument(s)!"}
-     return
-  }
-
-  # Get object for parentCell
-  set parentObj [get_bd_cells $parentCell]
-  if { $parentObj == "" } {
-     catch {common::send_msg_id "BD_TCL-100" "ERROR" "Unable to find parent cell <$parentCell>!"}
-     return
-  }
-
-  # Make sure parentObj is hier blk
-  set parentType [get_property TYPE $parentObj]
-  if { $parentType ne "hier" } {
-     catch {common::send_msg_id "BD_TCL-101" "ERROR" "Parent <$parentObj> has TYPE = <$parentType>. Expected to be <hier>."}
-     return
-  }
-
-  # Save current instance; Restore later
-  set oldCurInst [current_bd_instance .]
-
-  # Set parent object as current
-  current_bd_instance $parentObj
-
-  # Create cell and set as current instance
-  set hier_obj [create_bd_cell -type hier $nameHier]
-  current_bd_instance $hier_obj
-
-  # Create interface pins
-  create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:axis_rtl:1.0 M_AXIS_HEADPHONE
-
-  create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:axis_rtl:1.0 M_AXIS_PS
-
-  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:axis_rtl:1.0 S_AXIS_LINE_IN
-
-  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:axis_rtl:1.0 S_AXIS_PS
-
-  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI_CTRL_SINK
-
-  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI_CTRL_SOURCE
-
-
-  # Create pins
-  create_bd_pin -dir I -type rst aresetn
-  create_bd_pin -dir I -type clk clk
-
-  # Create instance: axis_switch_sink, and set properties
-  set axis_switch_sink [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_switch:1.1 axis_switch_sink ]
-  set_property -dict [ list \
-   CONFIG.DECODER_REG {1} \
-   CONFIG.NUM_MI {2} \
-   CONFIG.OUTPUT_REG {1} \
-   CONFIG.ROUTING_MODE {1} \
- ] $axis_switch_sink
-
-  # Create instance: axis_switch_source, and set properties
-  set axis_switch_source [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_switch:1.1 axis_switch_source ]
-  set_property -dict [ list \
-   CONFIG.DECODER_REG {1} \
-   CONFIG.NUM_MI {2} \
-   CONFIG.OUTPUT_REG {1} \
-   CONFIG.ROUTING_MODE {1} \
- ] $axis_switch_source
-
-  # Create instance: clash_dsp_0, and set properties
-  set clash_dsp_0 [ create_bd_cell -type ip -vlnv user.org:user:clash_dsp:1.0 clash_dsp_0 ]
-
-  # Create interface connections
-  connect_bd_intf_net -intf_net audio_top_0_AXIS_line_in [get_bd_intf_pins S_AXIS_LINE_IN] [get_bd_intf_pins axis_switch_source/S00_AXIS]
-  connect_bd_intf_net -intf_net axi_dma_0_M_AXIS_MM2S [get_bd_intf_pins S_AXIS_PS] [get_bd_intf_pins axis_switch_source/S01_AXIS]
-  connect_bd_intf_net -intf_net axis_switch_sink_M00_AXIS [get_bd_intf_pins M_AXIS_HEADPHONE] [get_bd_intf_pins axis_switch_sink/M00_AXIS]
-  connect_bd_intf_net -intf_net axis_switch_sink_M01_AXIS [get_bd_intf_pins M_AXIS_PS] [get_bd_intf_pins axis_switch_sink/M01_AXIS]
-  connect_bd_intf_net -intf_net axis_switch_source_M00_AXIS [get_bd_intf_pins axis_switch_sink/S00_AXIS] [get_bd_intf_pins axis_switch_source/M00_AXIS]
-  connect_bd_intf_net -intf_net axis_switch_source_M01_AXIS [get_bd_intf_pins axis_switch_source/M01_AXIS] [get_bd_intf_pins clash_dsp_0/axis_in]
-  connect_bd_intf_net -intf_net clash_dsp_0_axis_out [get_bd_intf_pins axis_switch_sink/S01_AXIS] [get_bd_intf_pins clash_dsp_0/axis_out]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M00_AXI [get_bd_intf_pins S_AXI_CTRL_SOURCE] [get_bd_intf_pins axis_switch_source/S_AXI_CTRL]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M01_AXI [get_bd_intf_pins S_AXI_CTRL_SINK] [get_bd_intf_pins axis_switch_sink/S_AXI_CTRL]
-
-  # Create port connections
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins clk] [get_bd_pins axis_switch_sink/aclk] [get_bd_pins axis_switch_sink/s_axi_ctrl_aclk] [get_bd_pins axis_switch_source/aclk] [get_bd_pins axis_switch_source/s_axi_ctrl_aclk] [get_bd_pins clash_dsp_0/clk]
-  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins aresetn] [get_bd_pins axis_switch_sink/aresetn] [get_bd_pins axis_switch_sink/s_axi_ctrl_aresetn] [get_bd_pins axis_switch_source/aresetn] [get_bd_pins axis_switch_source/s_axi_ctrl_aresetn] [get_bd_pins clash_dsp_0/aresetn]
-
-  # Restore current instance
-  current_bd_instance $oldCurInst
-}
 
 
 # Procedure to create entire design; Provide argument to make
@@ -336,11 +244,29 @@ proc create_root_design { parentCell } {
   set_property -dict [ list \
    CONFIG.M_TDATA_NUM_BYTES {8} \
    CONFIG.S_TDATA_NUM_BYTES {6} \
-   CONFIG.TDATA_REMAP {8'b00000000,tdata[47:24],8'b00000000,tdata[23:0]} \
+   CONFIG.TDATA_REMAP {tdata[47],tdata[47],tdata[47],tdata[47],tdata[47],tdata[47],tdata[47],tdata[47],tdata[47:24],tdata[23],tdata[23],tdata[23],tdata[23],tdata[23],tdata[23],tdata[23],tdata[23],tdata[23:0]} \
  ] $axis_subset_converter_1
 
-  # Create instance: dsp
-  create_hier_cell_dsp [current_bd_instance .] dsp
+  # Create instance: axis_switch_sink, and set properties
+  set axis_switch_sink [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_switch:1.1 axis_switch_sink ]
+  set_property -dict [ list \
+   CONFIG.DECODER_REG {1} \
+   CONFIG.NUM_MI {2} \
+   CONFIG.OUTPUT_REG {1} \
+   CONFIG.ROUTING_MODE {1} \
+ ] $axis_switch_sink
+
+  # Create instance: axis_switch_source, and set properties
+  set axis_switch_source [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_switch:1.1 axis_switch_source ]
+  set_property -dict [ list \
+   CONFIG.DECODER_REG {1} \
+   CONFIG.NUM_MI {2} \
+   CONFIG.OUTPUT_REG {1} \
+   CONFIG.ROUTING_MODE {1} \
+ ] $axis_switch_source
+
+  # Create instance: clash_dsp_0, and set properties
+  set clash_dsp_0 [ create_bd_cell -type ip -vlnv user.org:user:clash_dsp:1.0 clash_dsp_0 ]
 
   # Create instance: processing_system7_0, and set properties
   set processing_system7_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 processing_system7_0 ]
@@ -1161,21 +1087,24 @@ proc create_root_design { parentCell } {
  ] $xlconstant_0
 
   # Create interface connections
-  connect_bd_intf_net -intf_net audio_top_0_AXIS_line_in [get_bd_intf_pins audio_top_0/AXIS_line_in] [get_bd_intf_pins dsp/S_AXIS_LINE_IN]
+  connect_bd_intf_net -intf_net audio_top_0_AXIS_line_in [get_bd_intf_pins audio_top_0/AXIS_line_in] [get_bd_intf_pins axis_switch_source/S00_AXIS]
   connect_bd_intf_net -intf_net axi_dma_0_M_AXIS_MM2S [get_bd_intf_pins axi_dma_0/M_AXIS_MM2S] [get_bd_intf_pins axis_subset_converter_0/S_AXIS]
   connect_bd_intf_net -intf_net axi_dma_0_M_AXI_MM2S [get_bd_intf_pins axi_dma_0/M_AXI_MM2S] [get_bd_intf_pins axi_smc/S00_AXI]
   connect_bd_intf_net -intf_net axi_dma_0_M_AXI_S2MM [get_bd_intf_pins axi_dma_0/M_AXI_S2MM] [get_bd_intf_pins axi_smc/S01_AXI]
   connect_bd_intf_net -intf_net axi_smc_M00_AXI [get_bd_intf_pins axi_smc/M00_AXI] [get_bd_intf_pins processing_system7_0/S_AXI_GP0]
-  connect_bd_intf_net -intf_net axis_subset_converter_0_M_AXIS [get_bd_intf_pins axis_subset_converter_0/M_AXIS] [get_bd_intf_pins dsp/S_AXIS_PS]
+  connect_bd_intf_net -intf_net axis_subset_converter_0_M_AXIS [get_bd_intf_pins axis_subset_converter_0/M_AXIS] [get_bd_intf_pins axis_switch_source/S01_AXIS]
   connect_bd_intf_net -intf_net axis_subset_converter_1_M_AXIS [get_bd_intf_pins axi_dma_0/S_AXIS_S2MM] [get_bd_intf_pins axis_subset_converter_1/M_AXIS]
-  connect_bd_intf_net -intf_net axis_switch_sink_M00_AXIS [get_bd_intf_pins audio_top_0/AXIS_hphone] [get_bd_intf_pins dsp/M_AXIS_HEADPHONE]
-  connect_bd_intf_net -intf_net dsp_M_AXIS_PS [get_bd_intf_pins axis_subset_converter_1/S_AXIS] [get_bd_intf_pins dsp/M_AXIS_PS]
+  connect_bd_intf_net -intf_net axis_switch_sink_M00_AXIS [get_bd_intf_pins audio_top_0/AXIS_hphone] [get_bd_intf_pins axis_switch_sink/M00_AXIS]
+  connect_bd_intf_net -intf_net axis_switch_sink_M01_AXIS [get_bd_intf_pins axis_subset_converter_1/S_AXIS] [get_bd_intf_pins axis_switch_sink/M01_AXIS]
+  connect_bd_intf_net -intf_net axis_switch_source_M00_AXIS [get_bd_intf_pins axis_switch_sink/S00_AXIS] [get_bd_intf_pins axis_switch_source/M00_AXIS]
+  connect_bd_intf_net -intf_net axis_switch_source_M01_AXIS [get_bd_intf_pins axis_switch_source/M01_AXIS] [get_bd_intf_pins clash_dsp_0/axis_in]
+  connect_bd_intf_net -intf_net clash_dsp_0_axis_out [get_bd_intf_pins axis_switch_sink/S01_AXIS] [get_bd_intf_pins clash_dsp_0/axis_out]
   connect_bd_intf_net -intf_net processing_system7_0_DDR [get_bd_intf_ports DDR] [get_bd_intf_pins processing_system7_0/DDR]
   connect_bd_intf_net -intf_net processing_system7_0_FIXED_IO [get_bd_intf_ports FIXED_IO] [get_bd_intf_pins processing_system7_0/FIXED_IO]
   connect_bd_intf_net -intf_net processing_system7_0_IIC_1 [get_bd_intf_ports IIC_1] [get_bd_intf_pins processing_system7_0/IIC_1]
   connect_bd_intf_net -intf_net processing_system7_0_M_AXI_GP0 [get_bd_intf_pins processing_system7_0/M_AXI_GP0] [get_bd_intf_pins ps7_0_axi_periph/S00_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M00_AXI [get_bd_intf_pins dsp/S_AXI_CTRL_SOURCE] [get_bd_intf_pins ps7_0_axi_periph/M00_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M01_AXI [get_bd_intf_pins dsp/S_AXI_CTRL_SINK] [get_bd_intf_pins ps7_0_axi_periph/M01_AXI]
+  connect_bd_intf_net -intf_net ps7_0_axi_periph_M00_AXI [get_bd_intf_pins axis_switch_source/S_AXI_CTRL] [get_bd_intf_pins ps7_0_axi_periph/M00_AXI]
+  connect_bd_intf_net -intf_net ps7_0_axi_periph_M01_AXI [get_bd_intf_pins axis_switch_sink/S_AXI_CTRL] [get_bd_intf_pins ps7_0_axi_periph/M01_AXI]
   connect_bd_intf_net -intf_net ps7_0_axi_periph_M02_AXI [get_bd_intf_pins axi_dma_0/S_AXI_LITE] [get_bd_intf_pins ps7_0_axi_periph/M02_AXI]
 
   # Create port connections
@@ -1183,9 +1112,9 @@ proc create_root_design { parentCell } {
   connect_bd_net -net AC_GPIO3_0_1 [get_bd_ports lrclk] [get_bd_pins audio_top_0/AC_GPIO3]
   connect_bd_net -net audio_top_0_AC_GPIO0 [get_bd_ports sdata_o] [get_bd_pins audio_top_0/AC_GPIO0]
   connect_bd_net -net audio_top_0_AC_MCLK [get_bd_ports mclk] [get_bd_pins audio_top_0/AC_MCLK]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins audio_top_0/clk_100] [get_bd_pins axi_dma_0/m_axi_mm2s_aclk] [get_bd_pins axi_dma_0/m_axi_s2mm_aclk] [get_bd_pins axi_dma_0/s_axi_lite_aclk] [get_bd_pins axi_smc/aclk] [get_bd_pins axis_subset_converter_0/aclk] [get_bd_pins axis_subset_converter_1/aclk] [get_bd_pins dsp/clk] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/S_AXI_GP0_ACLK] [get_bd_pins ps7_0_axi_periph/ACLK] [get_bd_pins ps7_0_axi_periph/M00_ACLK] [get_bd_pins ps7_0_axi_periph/M01_ACLK] [get_bd_pins ps7_0_axi_periph/M02_ACLK] [get_bd_pins ps7_0_axi_periph/S00_ACLK] [get_bd_pins rst_ps7_0_100M/slowest_sync_clk]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins audio_top_0/clk_100] [get_bd_pins axi_dma_0/m_axi_mm2s_aclk] [get_bd_pins axi_dma_0/m_axi_s2mm_aclk] [get_bd_pins axi_dma_0/s_axi_lite_aclk] [get_bd_pins axi_smc/aclk] [get_bd_pins axis_subset_converter_0/aclk] [get_bd_pins axis_subset_converter_1/aclk] [get_bd_pins axis_switch_sink/aclk] [get_bd_pins axis_switch_sink/s_axi_ctrl_aclk] [get_bd_pins axis_switch_source/aclk] [get_bd_pins axis_switch_source/s_axi_ctrl_aclk] [get_bd_pins clash_dsp_0/clk] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/S_AXI_GP0_ACLK] [get_bd_pins ps7_0_axi_periph/ACLK] [get_bd_pins ps7_0_axi_periph/M00_ACLK] [get_bd_pins ps7_0_axi_periph/M01_ACLK] [get_bd_pins ps7_0_axi_periph/M02_ACLK] [get_bd_pins ps7_0_axi_periph/S00_ACLK] [get_bd_pins rst_ps7_0_100M/slowest_sync_clk]
   connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins processing_system7_0/FCLK_RESET0_N] [get_bd_pins rst_ps7_0_100M/ext_reset_in]
-  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins axi_dma_0/axi_resetn] [get_bd_pins axi_smc/aresetn] [get_bd_pins axis_subset_converter_0/aresetn] [get_bd_pins axis_subset_converter_1/aresetn] [get_bd_pins dsp/aresetn] [get_bd_pins ps7_0_axi_periph/ARESETN] [get_bd_pins ps7_0_axi_periph/M00_ARESETN] [get_bd_pins ps7_0_axi_periph/M01_ARESETN] [get_bd_pins ps7_0_axi_periph/M02_ARESETN] [get_bd_pins ps7_0_axi_periph/S00_ARESETN] [get_bd_pins rst_ps7_0_100M/peripheral_aresetn]
+  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins axi_dma_0/axi_resetn] [get_bd_pins axi_smc/aresetn] [get_bd_pins axis_subset_converter_0/aresetn] [get_bd_pins axis_subset_converter_1/aresetn] [get_bd_pins axis_switch_sink/aresetn] [get_bd_pins axis_switch_sink/s_axi_ctrl_aresetn] [get_bd_pins axis_switch_source/aresetn] [get_bd_pins axis_switch_source/s_axi_ctrl_aresetn] [get_bd_pins clash_dsp_0/aresetn] [get_bd_pins ps7_0_axi_periph/ARESETN] [get_bd_pins ps7_0_axi_periph/M00_ARESETN] [get_bd_pins ps7_0_axi_periph/M01_ARESETN] [get_bd_pins ps7_0_axi_periph/M02_ARESETN] [get_bd_pins ps7_0_axi_periph/S00_ARESETN] [get_bd_pins rst_ps7_0_100M/peripheral_aresetn]
   connect_bd_net -net sdata_i_1 [get_bd_ports sdata_i] [get_bd_pins audio_top_0/AC_GPIO1]
   connect_bd_net -net xlconstant_0_dout [get_bd_ports codec_address] [get_bd_pins xlconstant_0/dout]
 
@@ -1195,8 +1124,8 @@ proc create_root_design { parentCell } {
   create_bd_addr_seg -range 0x01000000 -offset 0xFC000000 [get_bd_addr_spaces axi_dma_0/Data_MM2S] [get_bd_addr_segs processing_system7_0/S_AXI_GP0/GP0_QSPI_LINEAR] SEG_processing_system7_0_GP0_QSPI_LINEAR
   create_bd_addr_seg -range 0x01000000 -offset 0xFC000000 [get_bd_addr_spaces axi_dma_0/Data_S2MM] [get_bd_addr_segs processing_system7_0/S_AXI_GP0/GP0_QSPI_LINEAR] SEG_processing_system7_0_GP0_QSPI_LINEAR
   create_bd_addr_seg -range 0x00010000 -offset 0x40400000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axi_dma_0/S_AXI_LITE/Reg] SEG_axi_dma_0_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C00000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs dsp/axis_switch_source/S_AXI_CTRL/Reg] SEG_axis_switch_0_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C10000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs dsp/axis_switch_sink/S_AXI_CTRL/Reg] SEG_axis_switch_sink_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C00000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axis_switch_source/S_AXI_CTRL/Reg] SEG_axis_switch_0_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C10000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axis_switch_sink/S_AXI_CTRL/Reg] SEG_axis_switch_sink_Reg
 
   # Exclude Address Segments
   create_bd_addr_seg -range 0x00400000 -offset 0xE0000000 [get_bd_addr_spaces axi_dma_0/Data_MM2S] [get_bd_addr_segs processing_system7_0/S_AXI_GP0/GP0_IOP] SEG_processing_system7_0_GP0_IOP
