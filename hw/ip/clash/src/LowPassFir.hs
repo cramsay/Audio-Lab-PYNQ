@@ -1,4 +1,4 @@
-module Filters where
+module LowPassFir where
 
 import Clash.Prelude
 
@@ -130,24 +130,32 @@ packChan left right = pack right ++# pack left
 topEntity
   :: Clock AudioDomain
   -> Reset AudioDomain
-  -> Enable AudioDomain
   -> Signal AudioDomain (BitVector 48)
+  -> Signal AudioDomain (Bool)
+  -> Signal AudioDomain (Bool)
+  -> Signal AudioDomain (Bool)
   -> (Signal AudioDomain (BitVector 48)
+     ,Signal AudioDomain Bool
+     ,Signal AudioDomain Bool
      ,Signal AudioDomain Bool)
-topEntity c r e samples = (samples_out, fromEnable e)
-  where filter = withClockResetEnable c r e lowPass700
+topEntity c r samples v_in last_in r_out = (samples_out, v_in, last_in, r_out)
+  where filter = withClockResetEnable c r (toEnable $ v_in .&&. r_out) lowPass700
         (left, right) = unbundle $ unpackChan <$> samples
         samples_out = packChan <$> filter left <*> filter right
 
 {-# ANN topEntity
   (Synthesize
-    { t_name   = "clash_dsp"
+    { t_name   = "clash_lowpass_fir"
     , t_inputs = [ PortName "clk"
                  , PortName "aresetn"
-                 , PortName "axis_in_tvalid"
                  , PortName "axis_in_tdata"
+                 , PortName "axis_in_tvalid"
+                 , PortName "axis_in_tlast"
+                 , PortName "axis_out_tready"
                  ]
     , t_output = PortProduct "" [PortName "axis_out_tdata"
                                 ,PortName "axis_out_tvalid"
+                                ,PortName "axis_out_tlast"
+                                ,PortName "axis_in_tready"
                                 ]
     }) #-}

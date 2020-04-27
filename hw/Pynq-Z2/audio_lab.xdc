@@ -1,7 +1,10 @@
-## Ignore inter clock paths in timing analysis
-set_false_path -from [get_clocks zed_audio_clk_48M] -to [get_clocks clk_fpga_0]
-set_false_path -from [get_clocks clk_fpga_0] -to [get_clocks zed_audio_clk_48M]
+# Setup bclk
+set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets bclk_IBUF]
+create_clock -add -name bclk -period 325 -waveform {0 162.5} [get_ports bclk]
 
+## Ignore inter clock paths in timing analysis
+set_false_path -from [get_clocks bclk] -to [get_clocks clk_fpga_0]
+set_false_path -from [get_clocks clk_fpga_0] -to [get_clocks bclk]
 
 ## Audio
 
