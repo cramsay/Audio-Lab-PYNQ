@@ -44,7 +44,7 @@ You can rebuild the entire wheel by running:
 ```sh
 $ git clone https://github.com/cramsay/Audio-Lab-PYNQ
 $ cd Audio-Lab-PYNQ
-$ BOARD=Pynq-Z2 make wheel
+$ BOARD=Pynq-Z2 make
 ```
 
 If you just want to build the Vivado project and bitstream, run:
