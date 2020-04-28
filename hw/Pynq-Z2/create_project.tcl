@@ -19,7 +19,7 @@ add_files -norecurse ./${proj_name}/${proj_name}.srcs/sources_1/bd/block_design/
 update_compile_order -fileset sources_1
 
 # Compile
-launch_runs impl_1 -to_step write_bitstream -jobs 16
+launch_runs impl_1 -to_step write_bitstream -jobs 2
 wait_on_run impl_1
 
 # Collect bitstream and hwh files
