@@ -18,6 +18,12 @@ Zynq/MPSoC board with the ADAU1761 audio codec without too much swearing.
 
 I'll try to supply a pre-built wheel containing the bitstream for any tagged releases.
 
+We depend on some new packaging features (depending on other packages via GitHub), so first, please update your pip:
+
+```sh
+pip3 install --upgrade pip
+```
+
 You can install it straight from the board with:
 
 ```sh

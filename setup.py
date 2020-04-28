@@ -72,8 +72,8 @@ setup(
     version='1.0',
     install_requires=[
         'pynq>=2.4',
-        'plotly>=3.8.1',
-        'plotly-express>=0.1.7',
+        'plotly>=4.6.0',
+        'pylibi2c @ https://github.com/amaork/libi2c/archive/master.zip#egg=pylibi2c-1.0.0'
     ],
     url='https://github.com/cramsay/Audio-Lab-PYNQ',
     license='DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE',

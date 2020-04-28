@@ -9,3 +9,5 @@ vivado.log
 *.htm
 
 .ipynb_checkpoints
+
+*.egg-info

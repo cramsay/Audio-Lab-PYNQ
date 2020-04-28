@@ -2,6 +2,10 @@ import os
 import shutil
 from distutils.dir_util import copy_tree
 
+from .AxisSwitch import AxisSwitch
+from .AudioLabOverlay import XbarSource, XbarEffect, XbarSink, AudioLabOverlay
+from .AudioCodec import ADAU1761
+
 def install_notebooks(notebook_dir=None):
     """Copy notebooks to the filesystem
     notebook_dir: str
